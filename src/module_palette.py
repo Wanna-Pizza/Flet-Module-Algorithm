@@ -29,6 +29,7 @@ class ModulePalette(ft.Container):
             "ToStringModule": (ft.Icons.TEXT_FIELDS, "orange"),
             "ForEachModule": (ft.Icons.REPEAT, "purple"),
             "FilterModule": (ft.Icons.FILTER_LIST, "teal"),
+            "TransformModule": (ft.Icons.AUTORENEW, "cyan"),
         }
     
     def _content(self):

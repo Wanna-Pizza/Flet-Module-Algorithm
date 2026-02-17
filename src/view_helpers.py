@@ -18,13 +18,14 @@ def register_modules():
     """Lazy registration of modules to avoid circular imports."""
     global MODULE_REGISTRY
     if not MODULE_REGISTRY:
-        from modules import IntSource, MultiplyModule, ToStringModule, ForEachModule, FilterModule
+        from modules import IntSource, MultiplyModule, ToStringModule, ForEachModule, FilterModule, TransformModule
         MODULE_REGISTRY = {
             "IntSource": IntSource,
             "MultiplyModule": MultiplyModule,
             "ToStringModule": ToStringModule,
             "ForEachModule": ForEachModule,
             "FilterModule": FilterModule,
+            "TransformModule": TransformModule,
         }
     return MODULE_REGISTRY
 
@@ -320,6 +321,7 @@ CONFIG_SCHEMAS = {
     'MultiplyModule': [('factor', float, 1.0)],
     'IntSource': [('start', int, 1), ('count', int, 5)],
     'FilterModule': [('expr', str, 'x > 0'), ('mode', str, 'keep'), ('field', str, '')],
+    'TransformModule': [('expr', str, 'x'), ('field', str, '')],
 }
 
 
