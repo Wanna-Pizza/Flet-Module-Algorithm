@@ -285,10 +285,18 @@ def persist_config_to_parent_body(view_instance, parent_view):
     
     idx = parent_view.body_views.index(view_instance)
     spec = parent_view.module.body[idx]
+    # start with the module's explicit config dict (if any)
     config_copy = dict(view_instance.module.config or {})
-    
+
+    # if this is a ForEach (or any module that exposes a `body` attr),
+    # preserve the `body` so nested modules are not lost when we
+    # convert the parent's spec into a (Class, config) tuple.
+    if hasattr(view_instance.module, 'body'):
+        # shallow-copy the body list to avoid accidental aliasing
+        config_copy = dict({'body': list(getattr(view_instance.module, 'body') or [])}, **config_copy)
+
     from modules.base import BaseModule
-    
+
     match spec:
         case (type() as cls, _):
             parent_view.module.body[idx] = (cls, config_copy)
@@ -296,6 +304,14 @@ def persist_config_to_parent_body(view_instance, parent_view):
             parent_view.module.body[idx] = (spec.__class__, config_copy)
         case _:
             parent_view.module.body[idx] = (view_instance.module.__class__, config_copy)
+
+    # propagate the persisted change upward so nested edits update outer specs
+    try:
+        upper = getattr(parent_view, 'parent_view', None)
+        if upper is not None:
+            persist_config_to_parent_body(parent_view, upper)
+    except Exception:
+        pass
 
 
 # Config schema definitions for well-known modules

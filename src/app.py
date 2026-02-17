@@ -8,15 +8,18 @@ from view_helpers import safe_update, unregister_view
 class Main:
     def __init__(self, page: ft.Page):
         self.page = page
-        # demo pipeline with ForEach to test visual nesting
-        foreach_module = ForEachModule(name="ForEach", body=[
+        # demo pipeline for debugging: nested ForEach (Outer -> Inner -> Multiply)
+        inner_foreach = ForEachModule(name="InnerForEach", body=[
             (MultiplyModule, {"factor": 10}),
+        ])
+        outer_foreach = ForEachModule(name="OuterForEach", body=[
+            inner_foreach,
             (ToStringModule, None),
         ])
-        
+
         self.pipeline = Pipeline([
-            IntSource(config={"start": 1, "count": 5}),
-            foreach_module,
+            IntSource(config={"start": 1, "count": 3}),
+            outer_foreach,
         ])
         # create module views with delete callback for top-level modules
         self.module_views = [PipelineModuleView(m, on_delete_callback=self._on_module_delete) for m in self.pipeline.modules]
@@ -286,7 +289,40 @@ class Main:
                             mv.refresh_preview()
                             break
 
+                # ---- DEBUG: dump pipeline/module structure before run ----
+                logger("DEBUG: pipeline module structure:")
+                def _dump_spec(spec, indent=1):
+                    pad = '  ' * indent
+                    # tuple spec (Class, config)
+                    if isinstance(spec, tuple):
+                        cls, cfg = spec
+                        logger(f"{pad}{cls.__name__} (config={cfg})")
+                        if isinstance(cfg, dict) and 'body' in cfg and isinstance(cfg['body'], list):
+                            for s in cfg['body']:
+                                _dump_spec(s, indent+1)
+                    # module instance with `body` attr
+                    elif hasattr(spec, 'body'):
+                        logger(f"{pad}{spec.__class__.__name__} instance (name={getattr(spec,'name', None)})")
+                        for s in getattr(spec, 'body', []):
+                            _dump_spec(s, indent+1)
+                    # class object
+                    elif isinstance(spec, type):
+                        logger(f"{pad}{spec.__name__}")
+                    else:
+                        logger(f"{pad}{repr(spec)}")
+
+                for m in self.pipeline.modules:
+                    _dump_spec(m)
+                logger('---- end structure ----')
+
                 result = await self.pipeline.run(None, logger=logger, on_module_output=on_module_output)
+
+                # post-run debug: show module outputs / ForEach previews
+                for m in self.pipeline.modules:
+                    try:
+                        logger(f"MODULE_DEBUG: {getattr(m,'name', m.__class__.__name__)} -> last_output={getattr(m,'last_output', None)} propagated_output={getattr(m,'propagated_output', None)} _body_preview={getattr(m,'_body_preview', None)}")
+                    except Exception:
+                        pass
                 logger(f"Pipeline result: {result}")
                 for mv in self.module_views:
                     mv.set_status("done", "green")

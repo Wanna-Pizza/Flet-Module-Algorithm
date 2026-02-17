@@ -140,6 +140,12 @@ class PipelineModuleView(ft.Container):
                 if module_cls is not None:
                     self.module.body.insert(insert_idx, (module_cls, None))
                     self._create_body_views()
+                    # persist change back to parent spec (so nested tuple-specs stay in sync)
+                    try:
+                        from view_helpers import persist_config_to_parent_body
+                        persist_config_to_parent_body(self, self.parent_view)
+                    except Exception:
+                        pass
                     if hasattr(self, '_body_views_column'):
                         self._body_views_column.controls = self._body_controls_wrapped()
                         safe_update(self._body_views_column)
@@ -191,7 +197,16 @@ class PipelineModuleView(ft.Container):
 
                     # finally, insert into this body (use view's module class + config)
                     try:
-                        parent_spec = (src_view.module.__class__, dict(getattr(src_view.module, 'config', {}) or {}))
+                        # preserve module config and, for modules that expose a `body` (e.g. ForEach),
+                        # include that `body` in the spec so nested sub-steps are not lost.
+                        cfg = dict(getattr(src_view.module, 'config', {}) or {})
+                        if hasattr(src_view.module, 'body') and 'body' not in cfg:
+                            try:
+                                cfg['body'] = list(getattr(src_view.module, 'body') or [])
+                            except Exception:
+                                pass
+
+                        parent_spec = (src_view.module.__class__, cfg)
                         self.module.body.insert(insert_idx, parent_spec)
                         self._create_body_views()
                         if hasattr(self, '_body_views_column'):
@@ -217,6 +232,12 @@ class PipelineModuleView(ft.Container):
                 pass
             self.body_views.pop(idx)
             self.module.body.pop(idx)
+            # persist removal up to parent (if this ForEach itself is a body item)
+            try:
+                from view_helpers import persist_config_to_parent_body
+                persist_config_to_parent_body(self, self.parent_view)
+            except Exception:
+                pass
             if hasattr(self, '_body_views_column'):
                 try:
                     self._body_views_column.controls = self._body_controls_wrapped()
@@ -232,6 +253,12 @@ class PipelineModuleView(ft.Container):
 
         self.module.body.append((module_cls, None))
         self._create_body_views()
+        # persist addition to parent ForEach spec (if applicable)
+        try:
+            from view_helpers import persist_config_to_parent_body
+            persist_config_to_parent_body(self, self.parent_view)
+        except Exception:
+            pass
         if hasattr(self, '_body_views_column'):
             try:
                 # ensure body views container knows current controls
