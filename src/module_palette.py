@@ -28,6 +28,7 @@ class ModulePalette(ft.Container):
             "MultiplyModule": (ft.Icons.CALCULATE, "blue"),
             "ToStringModule": (ft.Icons.TEXT_FIELDS, "orange"),
             "ForEachModule": (ft.Icons.REPEAT, "purple"),
+            "FilterModule": (ft.Icons.FILTER_LIST, "teal"),
         }
     
     def _content(self):

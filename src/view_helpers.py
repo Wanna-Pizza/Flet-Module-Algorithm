@@ -18,12 +18,13 @@ def register_modules():
     """Lazy registration of modules to avoid circular imports."""
     global MODULE_REGISTRY
     if not MODULE_REGISTRY:
-        from modules import IntSource, MultiplyModule, ToStringModule, ForEachModule
+        from modules import IntSource, MultiplyModule, ToStringModule, ForEachModule, FilterModule
         MODULE_REGISTRY = {
             "IntSource": IntSource,
             "MultiplyModule": MultiplyModule,
             "ToStringModule": ToStringModule,
             "ForEachModule": ForEachModule,
+            "FilterModule": FilterModule,
         }
     return MODULE_REGISTRY
 
@@ -318,6 +319,7 @@ def persist_config_to_parent_body(view_instance, parent_view):
 CONFIG_SCHEMAS = {
     'MultiplyModule': [('factor', float, 1.0)],
     'IntSource': [('start', int, 1), ('count', int, 5)],
+    'FilterModule': [('expr', str, 'x > 0'), ('mode', str, 'keep'), ('field', str, '')],
 }
 
 

@@ -1,5 +1,5 @@
 import flet as ft
-from modules import Pipeline, IntSource, MultiplyModule, ToStringModule, ForEachModule
+from modules import Pipeline, IntSource, MultiplyModule, ToStringModule, ForEachModule, FilterModule
 from views import PipelineModuleView
 from module_palette import ModulePalette
 from view_helpers import safe_update, unregister_view
@@ -61,6 +61,7 @@ class Main:
             MultiplyModule,
             ToStringModule,
             ForEachModule,
+            FilterModule,
         ], on_pick=self._on_palette_pick)
 
         # Plain (non-reorderable) view for top-level modules
