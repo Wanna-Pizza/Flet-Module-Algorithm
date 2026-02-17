@@ -3,7 +3,7 @@
 import json
 import flet as ft
 from typing import Optional
-from view_helpers import get_module_class, persist_config_to_parent_body, safe_update
+from view_helpers import get_module_class, persist_config_to_parent_body, safe_update, extract_module_name_from_drag_event
 
 
 class DragDropHandler:
@@ -56,19 +56,13 @@ class DragDropHandler:
         safe_update(self.view)
     
     def _extract_module_name(self, e) -> Optional[str]:
-        """Extract module name from drag event."""
-        # Try to get from src_id control
-        if hasattr(e, 'src_id') and e.src_id and hasattr(e, 'page'):
-            src_ctrl = e.page.get_control(e.src_id)
-            if src_ctrl and hasattr(src_ctrl, 'data') and isinstance(src_ctrl.data, str):
-                return src_ctrl.data
-        
-        # Try to get from event data
-        if hasattr(e, 'data') and isinstance(e.data, str):
-            from view_helpers import register_modules
-            if e.data in register_modules():
-                return e.data
-        
+        """Extract module name from drag event using helper in view_helpers."""
+        try:
+            nm = extract_module_name_from_drag_event(e)
+            if nm:
+                return nm
+        except Exception:
+            pass
         return None
 
 
@@ -113,92 +107,5 @@ class ConfigHandler:
         self.view.refresh_preview()
         safe_update(self.view)
     
-    def show_config_dialog(self, e):
-        """Open JSON editor dialog for module config."""
-        cfg_text = json.dumps(self.module.config, indent=2) if self.module.config else "{}"
-        editor = ft.TextField(value=cfg_text, multiline=True, expand=True)
-        err = ft.Text("", size=12, color="red")
-        
-        dlg = ft.AlertDialog(
-            title=ft.Text(f"{self.module.name} config"),
-            content=ft.Container(
-                content=ft.Column([editor, err]),
-                width=600,
-                height=320
-            )
-        )
-        
-        def close(ev=None):
-            dlg.open = False
-            self.view.page.update()
-        
-        def save(ev):
-            text = editor.value.strip()
-            
-            # Parse JSON
-            if not text:
-                new_cfg = {}
-            else:
-                try:
-                    new_cfg = json.loads(text)
-                except Exception as exc:
-                    err.value = f"Invalid JSON: {exc}"
-                    self.view.page.update()
-                    return
-            
-            # Apply config
-            self.module.config = new_cfg
-            persist_config_to_parent_body(self.view, self.view.parent_view)
-            
-            # Update config field
-            if hasattr(self.view, 'config_field') and self.view.config_field:
-                self.view.config_field.value = json.dumps(new_cfg, indent=2) if new_cfg else ""
-                safe_update(self.view.config_field)
-            
-            # Rebuild inline controls
-            self.view._build_inline_config_controls()
-            
-            close()
-        
-        dlg.actions = [
-            ft.ElevatedButton("Save", on_click=save),
-            ft.ElevatedButton("Cancel", on_click=close)
-        ]
-        
-        self.view.page.dialog = dlg
-        dlg.open = True
-        self.view.page.update()
 
 
-class DialogHandler:
-    """Handles dialog displays."""
-    
-    def __init__(self, view_instance):
-        self.view = view_instance
-        self.module = view_instance.module
-    
-    def show_output_dialog(self, e):
-        """Show module output in a dialog."""
-        last_output = getattr(self.module, "last_output", None)
-        
-        if last_output is None:
-            body = ft.Text("No output")
-        else:
-            from view_helpers import safe_json_serialize
-            txt = safe_json_serialize(last_output)
-            body = ft.TextField(value=txt, multiline=True, expand=True, disabled=True)
-        
-        dlg = ft.AlertDialog(
-            title=ft.Text(f"{self.module.name} output"),
-            content=ft.Container(content=body, width=600, height=300)
-        )
-        
-        def close_dlg(ev):
-            dlg.open = False
-            self.view.page.update()
-        
-        dlg.actions = [ft.ElevatedButton("Close", on_click=close_dlg)]
-        
-        self.view.page.dialog = dlg
-        dlg.open = True
-        self.view.page.update()

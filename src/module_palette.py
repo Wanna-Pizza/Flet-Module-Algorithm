@@ -52,7 +52,8 @@ class ModulePalette(ft.Container):
                 border_radius=8,
                 bgcolor='white,0.08',
                 border=ft.border.all(1, 'white,0.15'),
-                on_click=(lambda e, n=module_name: self._handle_pick(n))
+                on_click=(lambda e, n=module_name: self._handle_pick(n)),
+                data=module_name,
             )
 
             

@@ -8,7 +8,7 @@ from view_helpers import (
     safe_json_serialize, register_view, unregister_view,
 )
 from view_builders import ViewComponentBuilder
-from view_handlers import ConfigHandler, DialogHandler
+from view_handlers import ConfigHandler
 
 
 class PipelineModuleView(ft.Container):
@@ -41,7 +41,6 @@ class PipelineModuleView(ft.Container):
         
         # Handlers
         self._config_handler = ConfigHandler(self)
-        self._dialog_handler = DialogHandler(self)
         
         # Register view for cross-level drag/drop lookups
         register_view(self)
@@ -126,11 +125,11 @@ class PipelineModuleView(ft.Container):
         - moving an existing body view within the same ForEach
         - moving a top-level/module-from-other-parent into this ForEach (cross-level)
         """
-        # extract data (palette sends module name strings; draggables send id(view))
-        data = getattr(e, 'data', None)
-        if not data and getattr(e, 'src_id', None):
-            src_ctrl = self.page.get_control(e.src_id)
-            data = getattr(src_ctrl, 'data', None)
+        # extract module name / source id from drag event
+        from view_helpers import extract_module_name_from_drag_event
+        module_name = extract_module_name_from_drag_event(e)
+        data = module_name or getattr(e, 'data', None)
+        # If module_name was resolved, treat as palette add (string) below
 
         # add new module from palette (string module name)
         try:
@@ -275,9 +274,10 @@ class PipelineModuleView(ft.Container):
             self.collapse_btn.icon = ft.Icons.EXPAND if self._collapsed else ft.Icons.EXPAND_LESS
         
         # Action buttons
-        output_btn = ft.IconButton(ft.Icons.PREVIEW, icon_size=15, on_click=self._dialog_handler.show_output_dialog)
-        self.config_btn = ft.IconButton(ft.Icons.SETTINGS, icon_size=15, on_click=self._config_handler.show_config_dialog)
-        
+        # Remove preview and settings buttons (disabled/hidden per user's request)
+        output_btn = None
+        self.config_btn = None
+
         # Delete button for body modules
         delete_btn = None
         if self.on_delete_callback:
@@ -288,7 +288,7 @@ class PipelineModuleView(ft.Container):
             )
         
         # Build header
-        header_row = builder.build_header_row(self.collapse_btn, output_btn, self.config_btn, delete_btn)
+        header_row = builder.build_header_row(self.collapse_btn, output_btn=None, config_btn=None, delete_btn=delete_btn)
         label = ft.Container(
             content=header_row,
             alignment=ft.alignment.center_left,
@@ -305,7 +305,8 @@ class PipelineModuleView(ft.Container):
             cfg_val = safe_json_serialize(self.module.config)
             self.config_field = ft.TextField(value=cfg_val, multiline=False, expand=True, disabled=True, text_size=12)
         
-        config_row = builder.build_config_row(self.config_field, self._config_handler.show_config_dialog)
+        # show_config_dialog removed — keep config display but omit edit button
+        config_row = builder.build_config_row(self.config_field, None)
         
         # Inline config controls
         if not hasattr(self, '_config_controls_container'):

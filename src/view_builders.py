@@ -16,10 +16,11 @@ class ViewComponentBuilder:
         self.view = view_instance
         self.module = view_instance.module
     
-    def build_header_row(self, collapse_btn, output_btn, config_btn, delete_btn=None) -> ft.Row:
-        """Build the header row with controls (includes visible drag handle)."""
-        # header buttons (drag handle removed since reordering is disabled)
+    def build_header_row(self, collapse_btn, output_btn=None, config_btn=None, delete_btn=None) -> ft.Row:
+        """Build the header row with controls (includes visible drag handle).
 
+        `output_btn` and `config_btn` are optional and only included when provided.
+        """
         items = [
             collapse_btn,
             ft.Text(self.module.name, size=14),
@@ -30,7 +31,10 @@ class ViewComponentBuilder:
         if delete_btn:
             items.append(delete_btn)
 
-        items.extend([output_btn, config_btn])
+        if output_btn:
+            items.append(output_btn)
+        if config_btn:
+            items.append(config_btn)
 
         return ft.Row(items)
     
@@ -64,13 +68,15 @@ class ViewComponentBuilder:
             ),
         ])
     
-    def build_config_row(self, config_field, on_edit_click: Callable) -> ft.Row:
-        """Build config display row."""
-        return ft.Row([
+    def build_config_row(self, config_field, on_edit_click: Callable | None) -> ft.Row:
+        """Build config display row. `on_edit_click` optional — omit edit button when None."""
+        children = [
             ft.Text("Config:", size=12, color='white,0.6'),
             ft.Container(config_field, expand=True),
-            ft.IconButton(ft.Icons.EDIT, on_click=on_edit_click)
-        ])
+        ]
+        if on_edit_click:
+            children.append(ft.IconButton(ft.Icons.EDIT, on_click=on_edit_click))
+        return ft.Row(children)
     
     def build_input_display(self, show_expanded: bool, toggle_callback: Callable) -> ft.Container:
         """Build input display container."""
@@ -197,7 +203,8 @@ class ViewComponentBuilder:
         
         # Body views are shown as a plain Column (reordering removed)
         controls_for_column = self.view._body_controls_wrapped() if getattr(self.view, '_mounted', False) else [v for v in body_views]
-        rl = ft.Column(controls_for_column, spacing=6)
+        # make body list scrollable when many child modules exist
+        rl = ft.Column(controls_for_column, spacing=6, scroll=ft.ScrollMode.AUTO, expand=True)
 
         if not hasattr(self.view, '_body_views_column'):
             self.view._body_views_column = rl

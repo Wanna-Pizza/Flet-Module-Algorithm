@@ -54,6 +54,61 @@ def get_module_class(name: str):
     return register_modules().get(name)
 
 
+def extract_module_name_from_drag_event(e) -> Optional[str]:
+    """Extract a module class name from a drag event.
+
+    Supports the following payloads found in `e`:
+    - e.src_id pointing to a control whose `data` is the module name
+    - e.data == module name string
+    - e.data == JSON string containing a `src_id` (e.g. '{"src_id":"_245",...}')
+
+    Returns module name string or None.
+    """
+    # 1) src_id reference (most reliable)
+    try:
+        if hasattr(e, 'src_id') and e.src_id and hasattr(e, 'page'):
+            src_ctrl = e.page.get_control(e.src_id)
+            if src_ctrl:
+                d = getattr(src_ctrl, 'data', None)
+                if isinstance(d, str) and d:
+                    return d
+                c = getattr(src_ctrl, 'content', None)
+                if c and isinstance(getattr(c, 'data', None), str):
+                    return c.data
+                inner = getattr(c, 'content', None)
+                if inner and getattr(inner, 'controls', None):
+                    for child in inner.controls:
+                        if isinstance(getattr(child, 'data', None), str):
+                            return child.data
+                        cc = getattr(child, 'content', None)
+                        if cc and isinstance(getattr(cc, 'data', None), str):
+                            return cc.data
+    except Exception:
+        pass
+
+    # 2) e.data that is a JSON string with src_id
+    try:
+        if hasattr(e, 'data') and isinstance(e.data, str):
+            s = e.data.strip()
+            if s.startswith('{'):
+                try:
+                    parsed = json.loads(s)
+                    sid = parsed.get('src_id') or parsed.get('srcId') or parsed.get('id')
+                    if sid and hasattr(e, 'page'):
+                        src_ctrl = e.page.get_control(sid)
+                        if src_ctrl and isinstance(getattr(src_ctrl, 'data', None), str):
+                            return src_ctrl.data
+                except Exception:
+                    pass
+            # 3) e.data might be module name directly
+            if e.data in register_modules():
+                return e.data
+    except Exception:
+        pass
+
+    return None
+
+
 def safe_json_serialize(value: Any, indent: int = 2) -> str:
     """Safely serialize value to JSON string."""
     if value is None:
